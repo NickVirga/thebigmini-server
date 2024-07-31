@@ -83,7 +83,7 @@ router.post("/signup", async (req, res) => {
         id: id,
         email: req.body.email,
         password: hashedPassword,
-        isVerified: false,
+        is_verified: false,
       };
   
       await knex("users").insert(newUser);
@@ -114,11 +114,11 @@ router.get("/verify/:token", async (req, res) => {
       return res.status(400).json({ message: "Invalid or expired token" });
     }
 
-    if (user.isVerified) {
+    if (user.is_verified) {
       return res.status(400).json({ message: "Email is already verified" });
     }
 
-    await knex("users").where({ id: userId }).update({ isVerified: true });
+    await knex("users").where({ id: userId }).update({ is_verified: true });
 
     res.status(200).json({ message: "Email verified successfully" });
   } catch (err) {
