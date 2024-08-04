@@ -2,171 +2,76 @@ const router = require("express").Router();
 const jwt = require("jsonwebtoken");
 const knex = require("knex")(require("../knexfile"));
 const { v4: uuidv4 } = require("uuid");
-const bcrypt = require("bcrypt");
-const nodemailer = require("nodemailer");
-const { SESClient, SendRawEmailCommand } = require("@aws-sdk/client-ses");
 const dotenv = require("dotenv");
+const { OAuth2Client } = require("google-auth-library");
 
 dotenv.config();
+
+const { GOOGLE_OAUTH_CLIENT_ID, JWT_ACCESS_SECRET_KEY, JWT_REFRESH_SECRET_KEY } = process.env;
+
+const authClient = new OAuth2Client(GOOGLE_OAUTH_CLIENT_ID);
 
 const accessTokenDuration = "15m";
 const refreshTokenDuration = "7d";
 
-const sesClient = new SESClient({
-  region: process.env.AWS_SES_REGION,
-  credentials: {
-    accessKeyId: process.env.AWS_SES_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SES_SECRET_ACCESS_KEY,
-  },
-});
+const getProviderId = async (providerName) => {
+  const provider = await knex("authentication_providers")
+    .select("id")
+    .where({ provider_name: providerName })
+    .first();
+  if (!provider) {
+    throw new Error("Authentication provider not found");
+  }
+  return provider.id;
+};
 
-const transporter = nodemailer.createTransport({
-  SES: { ses: sesClient, aws: { SendRawEmailCommand } },
-});
+const findOrCreateUser = async (providerId, providerUserId) => {
+  let user = await knex("users")
+    .where({ provider_user_id: providerUserId, provider_id: providerId })
+    .first();
 
-router.post("/signup", async (req, res) => {
-
-  const requiredSignupProperties = ["email", "password"];
-
-  const hasAllProperties = (obj, props) => {
-    for (let i = 0; i < props.length; i++) {
-      if (!obj.hasOwnProperty(props[i])) return false;
-    }
-    return true;
-  };
-
-  if (!hasAllProperties(req.body, requiredSignupProperties)) {
-    res.status(400).json({
-      message: `One or more missing properties in request body.`,
+  if (!user) {
+    const userId = uuidv4();
+    await knex("users").insert({
+      id: userId,
+      provider_id: providerId,
+      provider_user_id: providerUserId,
     });
-    return;
+    return userId;
+  } else {
+    return user.id;
   }
+};
 
-  const { email, password } = req.body;
+router.post("/login/google", async (req, res) => {
+  const { idToken } = req.body;
 
-  try {
-    const existingUser = await knex("users").where({ email }).first();
-
-    if (existingUser) {
-      return res.status(409).json({ message: "Email is already in use." });
-    }
-
-    const id = uuidv4();
-
-    const verificationToken = jwt.sign(
-      { id: id },
-      process.env.JWT_EMAIL_VERFICATION_SECRET_KEY,
-      { expiresIn: "1h" }
-    );
-    const verificationUrl = `${process.env.CORS_ORIGIN}/verify/${verificationToken}`;
-
-    const mailOptions = {
-      from: process.env.VERIFICATION_EMAIL_ADDRESS,
-      to: email,
-      subject: "The BIGmini Crossword - Email Verification",
-      html: `<p style="margin: 20px 0">Thank you for signing up for The BIGmini Crossword. Click the following link within 24 hours to activate your account:</p>
-            <p style="margin: 20px 0"><a href="${verificationUrl}" target="_blank">${verificationUrl}</a></p>
-            <p style="margin: 20px 0">Once activated, your stats will beign to be tracked.</p>`,
-    };
-    
-    transporter.sendMail(mailOptions, async (error, info) => {
-      if (error) {
-        console.log(error);
-        return res
-          .status(500)
-          .json({ message: "Error sending verification email" });
-      } else  {
-
-      const hashedPassword = await bcrypt.hash(password, 10);
-
-      const newUser = {
-        id: id,
-        email: req.body.email,
-        password: hashedPassword,
-        is_verified: false,
-      };
-  
-      await knex("users").insert(newUser);
-
-      return res
-        .status(201)
-        .json({ message: "Verification email sent. Please check your inbox." });
-      }
-    });
-  } catch (err) {
-    console.log(err);
-    res.status(500).json({ message: "Unable to create new user." });
-  }
-});
-
-router.get("/verify/:token", async (req, res) => {
-  try {
-    const { token } = req.params;
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_EMAIL_VERFICATION_SECRET_KEY
-    );
-    const userId = decoded.id;
-
-    const user = await knex("users").where({ id: userId }).first();
-
-    if (!user) {
-      return res.status(400).json({ message: "Invalid or expired token" });
-    }
-
-    if (user.is_verified) {
-      return res.status(400).json({ message: "Email is already verified" });
-    }
-
-    await knex("users").where({ id: userId }).update({ is_verified: true });
-
-    res.status(200).json({ message: "Email verified successfully" });
-  } catch (err) {
-    console.log(err);
-    res.status(500).json({ message: "Unable to verify email" });
-  }
-});
-
-router.post("/login", async (req, res) => {
-  const { email, password } = req.body;
-
-  if (!email || !password) {
+  if (!idToken) {
     return res.status(400).json({
-      error: "Login requires email and password",
+      error: "Identification token not provided",
     });
   }
 
   try {
-    const foundUsers = await knex("users").where({ email: email });
+    const ticket = await authClient.verifyIdToken({
+      idToken: idToken,
+      audience: GOOGLE_OAUTH_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+    const providerUserId = payload["sub"];
 
-    if (foundUsers.length === 0) {
-      return res.status(401).json({
-        error: "Invalid login credentials",
-      });
-    }
-
-    const matchingUser = foundUsers[0];
-
-    const isPasswordValid = await bcrypt.compare(
-      password,
-      matchingUser.password
-    );
-
-    if (!isPasswordValid) {
-      return res.status(401).json({
-        error: "Invalid login credentials",
-      });
-    }
+    const providerId = await getProviderId("Google");
+    const userId = await findOrCreateUser(providerId, providerUserId);
 
     const accessToken = jwt.sign(
-      { user_id: matchingUser.id },
-      process.env.JWT_ACCESS_SECRET_KEY,
+      { user_id:userId },
+      JWT_ACCESS_SECRET_KEY,
       { expiresIn: accessTokenDuration }
     );
 
     const refreshToken = jwt.sign(
-      { user_id: matchingUser.id },
-      process.env.JWT_REFRESH_SECRET_KEY,
+      { user_id: userId },
+      JWT_REFRESH_SECRET_KEY,
       { expiresIn: refreshTokenDuration }
     );
 
@@ -176,7 +81,7 @@ router.post("/login", async (req, res) => {
       message: "Successfully logged in, enjoy your stay",
     });
   } catch (err) {
-    console.log(err);
+    console.error(err);
     res.status(500).json({ message: "Internal server error" });
   }
 });
@@ -191,11 +96,11 @@ router.post("/refresh-token", (req, res) => {
   try {
     const decoded = jwt.verify(
       refreshToken,
-      process.env.JWT_REFRESH_SECRET_KEY
+      JWT_REFRESH_SECRET_KEY
     );
     const accessToken = jwt.sign(
       { user_id: decoded.user_id },
-      process.env.JWT_ACCESS_SECRET_KEY,
+      JWT_ACCESS_SECRET_KEY,
       { expiresIn: accessTokenDuration }
     );
     res.json({ accessToken });
