@@ -13,10 +13,10 @@ app.use(
 app.use(express.json());
 
 const authRoutes = require("./routes/auth-routes");
-const usersRoutes = require("./routes/users-routes");
+const gamesRoutes = require("./routes/games-routes");
 
 app.use("/api/auth", authRoutes);
-app.use("/api/users", usersRoutes);
+app.use("/api/games", gamesRoutes);
 
 app.listen(port, () => {
     console.log(`Server is listening on port: ${port}`);

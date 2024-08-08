@@ -101,11 +101,10 @@ router.post("/refresh-token", async (req, res) => {
 
   try {
     const decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET_KEY);
-
     const user = await knex("users").where({ id: decoded.userId }).first();
     if (
       !user ||
-      user.refresh_token_version !== refreshToken.refreshTokenVersion
+      user.refresh_token_version !== decoded.refreshTokenVersion
     ) {
       return res.status(403).json({ message: "Invalid refresh token" });
     }
@@ -119,7 +118,7 @@ router.post("/refresh-token", async (req, res) => {
     const newRefreshToken = jwt.sign(
       {
         userId: decoded.userId,
-        refreshTokenVersion: refreshToken.refreshTokenVersion,
+        refreshTokenVersion: decoded.refreshTokenVersion,
       },
       JWT_REFRESH_SECRET_KEY,
       { expiresIn: refreshTokenDuration }

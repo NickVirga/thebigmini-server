@@ -20,13 +20,13 @@ const authorize = (req, res, next) => {
 
     const bearerToken = splitBearerToken[1];
 
-    jwt.verify(bearerToken, process.env.JWT_SECRET_KEY, (err, payload) => {
+    jwt.verify(bearerToken, process.env.JWT_ACCESS_SECRET_KEY, (err, payload) => {
         if (err) {
             return res.status(401).json({
                 error: "Invalid JWT"
             })
         }
-        req.user_id = payload.user_id;
+        req.userId = payload.userId;
 
         next();
     })
