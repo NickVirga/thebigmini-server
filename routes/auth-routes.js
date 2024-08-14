@@ -29,7 +29,7 @@ const getProviderId = async (providerName) => {
   return provider.id;
 };
 
-const findOrCreateUser = async (providerId, providerUserId) => {
+const findOrCreateUser = async (providerId, providerUserId, userEmail) => {
   const user = await knex("users")
     .where({ provider_user_id: providerUserId, provider_id: providerId })
     .first();
@@ -40,6 +40,7 @@ const findOrCreateUser = async (providerId, providerUserId) => {
       id: userId,
       provider_id: providerId,
       provider_user_id: providerUserId,
+      email: userEmail,
       refresh_token_version: 1,
     });
     return { userId, refreshTokenVersion: 1 };
@@ -64,11 +65,13 @@ router.post("/login/google", async (req, res) => {
     });
     const payload = ticket.getPayload();
     const providerUserId = payload["sub"];
+    const userEmail = payload["email"];
 
     const providerId = await getProviderId("Google");
     const { userId, refreshTokenVersion } = await findOrCreateUser(
       providerId,
-      providerUserId
+      providerUserId,
+      userEmail
     );
 
     const accessToken = jwt.sign({ userId: userId }, JWT_ACCESS_SECRET_KEY, {
