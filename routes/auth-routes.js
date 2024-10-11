@@ -4,6 +4,7 @@ const knex = require("knex")(require("../knexfile"));
 const { v4: uuidv4 } = require("uuid");
 const dotenv = require("dotenv");
 const { OAuth2Client } = require("google-auth-library");
+const passport = require('passport');
 
 dotenv.config();
 
@@ -17,6 +18,36 @@ const authClient = new OAuth2Client(GOOGLE_OAUTH_CLIENT_ID);
 
 const accessTokenDuration = "15m";
 const refreshTokenDuration = "30d";
+
+// Google Auth Route
+router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+
+router.get('/google/callback', passport.authenticate('google', { session: false, failureRedirect: '/' }), (req, res) => {
+
+  const { accessToken, refreshToken } = req.user;
+
+  res.redirect(`${process.env.CORS_ORIGIN}/auth/login-callback?accessToken=${accessToken}&refreshToken=${refreshToken}`);
+});
+
+// Twitter Auth Route
+router.get('/twitter', passport.authenticate('twitter'));
+
+router.get('/twitter/callback', passport.authenticate('twitter', { failureRedirect: '/' }), (req, res) => {
+
+  const { accessToken, refreshToken } = req.user;
+
+  res.redirect(`${process.env.CORS_ORIGIN}/auth/login-callback?accessToken=${accessToken}&refreshToken=${refreshToken}`);
+});
+
+// Facebook Auth Route
+router.get('/facebook', passport.authenticate('facebook'));
+
+router.get('/facebook/callback', passport.authenticate('facebook', { session: false, failureRedirect: '/' }), (req, res) => {
+
+  const { accessToken, refreshToken } = req.user;
+
+  res.redirect(`${process.env.CORS_ORIGIN}/auth/login-callback?accessToken=${accessToken}&refreshToken=${refreshToken}`);
+});
 
 const getProviderId = async (providerName) => {
   const provider = await knex("authentication_providers")
@@ -74,19 +105,19 @@ router.post("/login/google", async (req, res) => {
       userEmail
     );
 
-    const accessToken = jwt.sign({ userId: userId }, JWT_ACCESS_SECRET_KEY, {
+    const newAccessToken = jwt.sign({ userId: userId }, JWT_ACCESS_SECRET_KEY, {
       expiresIn: accessTokenDuration,
     });
 
-    const refreshToken = jwt.sign(
+    const newRefreshToken = jwt.sign(
       { userId: userId, refreshTokenVersion: refreshTokenVersion },
       JWT_REFRESH_SECRET_KEY,
       { expiresIn: refreshTokenDuration }
     );
 
     res.json({
-      accessToken: accessToken,
-      refreshToken: refreshToken,
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
       message: "Successfully logged in, enjoy your stay",
     });
   } catch (err) {
