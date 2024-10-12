@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const FacebookStrategy = require("passport-facebook").Strategy;
 const TwitterStrategy = require("passport-twitter-oauth2").Strategy;
+// const TwitterStrategy = require("passport-twitter").Strategy;
 const { getProviderId, findOrCreateUser } = require("../models/user");
 const dotenv = require("dotenv");
 dotenv.config();
@@ -128,17 +129,36 @@ passport.use(
       clientSecret: process.env.TWITTER_OAUTH_CLIENT_SECRET,
       callbackURL: `${process.env.SERVER_BASE_URL}/api/auth/twitter/callback`,
     },
-    function (accessToken, refreshToken, profile, done) {
-      const user = {
-        twitterId: profile.id,
-        username: profile.username,
-        displayName: profile.displayName,
-        profileImage: profile.photos[0].value,
-      };
+    async (accessToken, refreshToken, profile, done) => {
+      try {
+        const user = {
+          twitterId: profile.id,
+          username: profile.username,
+          displayName: profile.displayName,
+          profileImage: profile.photos[0].value,
+        };
 
-      const jwtToken = jwt.sign(user, JWT_SECRET, { expiresIn: '1h' });
+        const newAccessToken = jwt.sign(
+          { userId: user.twitterId },
+          process.env.JWT_ACCESS_SECRET_KEY,
+          {
+            expiresIn: accessTokenDuration,
+          }
+        );
 
-    return done(null, { ...user, jwtToken });
+        const newRefreshToken = jwt.sign(
+          { userId: user.twitterId, refreshTokenVersion: 1 },
+          process.env.JWT_REFRESH_SECRET_KEY,
+          { expiresIn: refreshTokenDuration }
+        );
+
+        done(null, {
+          accessToken: newAccessToken,
+          refreshToken: newRefreshToken,
+        });
+      } catch (err) {
+        done(err);
+      }
     }
     // async (token, tokenSecret, profile, cb) => {
     //   console.log("try twitter strat")
