@@ -31,7 +31,7 @@ passport.use(
     {
       clientID: process.env.GOOGLE_OAUTH_CLIENT_ID,
       clientSecret: process.env.GOOGLE_OAUTH_CLIENT_SECRET,
-      callbackURL: "/api/auth/google/callback",
+      callbackURL: `${process.env.SERVER_BASE_URL}/api/auth/google/callback`,
     },
     async (accessToken, refreshToken, profile, done) => {
       //ignore accessToken and refreshToken (used for API calls)
@@ -78,7 +78,7 @@ passport.use(
     {
       clientID: process.env.FACEBOOK_OAUTH_CLIENT_ID,
       clientSecret: process.env.FACEBOOK_OAUTH_CLIENT_SECRET,
-      callbackURL: "/api/auth/facebook/callback",
+      callbackURL: `${process.env.SERVER_BASE_URL}/api/auth/facebook/callback`,
       profileFields: ["id", "email"],
     },
     async (accessToken, refreshToken, profile, done) => {
@@ -126,7 +126,7 @@ passport.use(
     {
       clientID: process.env.TWITTER_OAUTH_CLIENT_ID,
       clientSecret: process.env.TWITTER_OAUTH_CLIENT_SECRET,
-      callbackURL: "/api/auth/twitter/callback",
+      callbackURL: `${process.env.SERVER_BASE_URL}/api/auth/facebook/callback`,
       scope: ['tweet.read', 'tweet.write', 'users.read']
     },
     function (accessToken, refreshToken, profile, done) {
