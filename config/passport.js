@@ -126,7 +126,7 @@ passport.use(
     {
       clientID: process.env.TWITTER_OAUTH_CLIENT_ID,
       clientSecret: process.env.TWITTER_OAUTH_CLIENT_SECRET,
-      callbackURL: `${process.env.SERVER_BASE_URL}/api/auth/facebook/callback`,
+      callbackURL: `${process.env.SERVER_BASE_URL}/api/auth/twitter/callback`,
       scope: ['tweet.read', 'tweet.write', 'users.read']
     },
     function (accessToken, refreshToken, profile, done) {
