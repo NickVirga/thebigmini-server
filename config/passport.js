@@ -111,7 +111,7 @@ passport.use(
 passport.use(
   new DiscordStrategy(
     {
-      clientID: process.env.DISCORD_OAITH_CLIENT_ID,
+      clientID: process.env.DISCORD_OAUTH_CLIENT_ID,
       clientSecret: process.env.DISCORD_OAUTH_CLIENT_SECRET,
       callbackURL: `${process.env.SERVER_BASE_URL}/api/auth/discord/callback`,
       scope: ["identify", "email"],
