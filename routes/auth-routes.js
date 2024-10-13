@@ -29,6 +29,26 @@ router.get('/google/callback', passport.authenticate('google', { session: false,
   res.redirect(`${process.env.CORS_ORIGIN}/auth/login-callback?accessToken=${accessToken}&refreshToken=${refreshToken}`);
 });
 
+// Facebook Auth Route
+router.get('/facebook', passport.authenticate('facebook'));
+
+router.get('/facebook/callback', passport.authenticate('facebook', { session: false, failureRedirect: '/' }), (req, res) => {
+
+  const { accessToken, refreshToken } = req.user;
+
+  res.redirect(`${process.env.CORS_ORIGIN}/auth/login-callback?accessToken=${accessToken}&refreshToken=${refreshToken}`);
+});
+
+// Discord Auth Route
+router.get('/discord', passport.authenticate('discord'));
+
+router.get('/discord/callback', passport.authenticate('discord', { session: false, failureRedirect: '/' }), (req, res) => {
+
+  const { accessToken, refreshToken } = req.user;
+
+  res.redirect(`${process.env.CORS_ORIGIN}/auth/login-callback?accessToken=${accessToken}&refreshToken=${refreshToken}`);
+});
+
 // Twitter Auth Route
 router.get('/twitter', passport.authenticate('twitter'));
 
@@ -39,15 +59,7 @@ router.get('/twitter/callback', passport.authenticate('twitter', { failureRedire
   res.redirect(`${process.env.CORS_ORIGIN}/auth/login-callback?accessToken=${accessToken}&refreshToken=${refreshToken}`);
 });
 
-// Facebook Auth Route
-router.get('/facebook', passport.authenticate('facebook'));
 
-router.get('/facebook/callback', passport.authenticate('facebook', { session: false, failureRedirect: '/' }), (req, res) => {
-
-  const { accessToken, refreshToken } = req.user;
-
-  res.redirect(`${process.env.CORS_ORIGIN}/auth/login-callback?accessToken=${accessToken}&refreshToken=${refreshToken}`);
-});
 
 const getProviderId = async (providerName) => {
   const provider = await knex("authentication_providers")
