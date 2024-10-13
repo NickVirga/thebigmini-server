@@ -40,14 +40,14 @@ router.get('/facebook/callback', passport.authenticate('facebook', { session: fa
 });
 
 // // Discord Auth Route
-// router.get('/discord', passport.authenticate('discord'));
+router.get('/discord', passport.authenticate('discord'));
 
-// router.get('/discord/callback', passport.authenticate('discord', { session: false, failureRedirect: '/' }), (req, res) => {
+router.get('/discord/callback', passport.authenticate('discord', { session: false, failureRedirect: '/' }), (req, res) => {
 
-//   const { accessToken, refreshToken } = req.user;
+  const { accessToken, refreshToken } = req.user;
 
-//   res.redirect(`${process.env.CORS_ORIGIN}/auth/login-callback?accessToken=${accessToken}&refreshToken=${refreshToken}`);
-// });
+  res.redirect(`${process.env.CORS_ORIGIN}/auth/login-callback?accessToken=${accessToken}&refreshToken=${refreshToken}`);
+});
 
 // Twitter Auth Route
 router.get('/twitter', passport.authenticate('twitter'));
