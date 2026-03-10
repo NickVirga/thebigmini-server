@@ -1,56 +1,35 @@
-// const passport = require('passport');
-// const passportJWT = require('passport-jwt');
-// const JWTStrategy = passportJWT.Strategy;
-// // const ExtractJWT = passportJWT.ExtractJwt; 
+require('dotenv').config();
+const jwt = require('jsonwebtoken');
 
-// // JWT Strategy
-// passport.use(new JWTStrategy({
-//   jwtFromRequest: passportJWT.ExtractJwt.fromAuthHeaderAsBearerToken(),
-//   secretOrKey: process.env.JWT_ACCESS_SECRET_KEY
-// }, (jwtPayload, done) => {
-//   // Example user lookup, replace with actual DB call
-//   const user = { id: jwtPayload.id, name: jwtPayload.name };
-//   return done(null, user);
-// }));
+const authorize = (req, res, next) => {
+    const bearerTokenString = req.headers.authorization;
 
-// // JWT middleware
-// const jwtAuth = passport.authenticate('jwt', { session: false });
+    if (!bearerTokenString) {
+        return res.status(401).json({
+            error: "Resource requires Bearer token authorization"
+        })
+    }
 
-// module.exports = { jwtAuth };
+    const splitBearerToken = bearerTokenString.split(" ");
 
+    if (splitBearerToken.length !== 2) {
+        return res.status(400).json({
+            error: "Bearer token is malformed"
+        })
+    }
 
-// require('dotenv').config();
-// const jwt = require('jsonwebtoken');
+    const bearerToken = splitBearerToken[1];
 
-// const authorize = (req, res, next) => {
-//     const bearerTokenString = req.headers.authorization;
+    jwt.verify(bearerToken, process.env.JWT_ACCESS_SECRET_KEY, (err, payload) => {
+        if (err) {
+            return res.status(401).json({
+                error: "Invalid JWT"
+            })
+        }
+        req.userId = payload.userId;
 
-//     if (!bearerTokenString) {
-//         return res.status(401).json({
-//             error: "Resource requires Bearer token authorization"
-//         })
-//     }
+        next();
+    })
+}
 
-//     const splitBearerToken = bearerTokenString.split(" ");
-
-//     if (splitBearerToken.length !== 2) {
-//         return res.status(400).json({
-//             error: "Bearer token is malformed"
-//         })
-//     }
-
-//     const bearerToken = splitBearerToken[1];
-
-//     jwt.verify(bearerToken, process.env.JWT_ACCESS_SECRET_KEY, (err, payload) => {
-//         if (err) {
-//             return res.status(401).json({
-//                 error: "Invalid JWT"
-//             })
-//         }
-//         req.userId = payload.userId;
-
-//         next();
-//     })
-// }
-
-// module.exports = authorize;
+module.exports = authorize;

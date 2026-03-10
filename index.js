@@ -17,10 +17,10 @@ app.use(
 app.use(express.json());
 
 const authRoutes = require("./routes/auth-routes");
-// const gamesRoutes = require("./routes/games-routes");
+const gamesRoutes = require("./routes/games-routes");
 
 app.use("/api/auth", authRoutes);
-// app.use("/api/games", gamesRoutes);
+app.use("/api/games", gamesRoutes);
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => {

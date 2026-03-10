@@ -6,36 +6,45 @@ const { body, validationResult } = require("express-validator");
 
 const validateGameInput = [
   body("gameId")
-    .isString()
     .notEmpty()
     .withMessage("Game ID is required and must be a string"),
   body("gameScore")
-    .isNumeric()
-    .withMessage("Game score is required and must be a number"),
+    .notEmpty()
+    .withMessage("Game score is required")
+    .isFloat({ min: 0, max: 100 })
+    .withMessage("Game score must be a number between 0 and 100"),
 ];
 
-router.post("/", authorize, async (req, res) => {
+router.post("/", authorize, validateGameInput, async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
   }
 
   const { gameId, gameScore } = req.body;
+  const userId = req.userId;
 
   try {
     const existingEntry = await knex("games")
-      .where({ user_id: req.userId, game_id: gameId })
+      .where({ user_id: userId, game_id: gameId })
       .first();
 
     if (existingEntry) {
       return res.status(409).json({ message: "Entry already exists" });
     }
 
-    await knex("games").insert({
-      id: uuidv4(),
-      user_id: req.userId,
-      game_id: gameId,
-      score: gameScore,
+    await knex.transaction(async (trx) => {
+      await trx("games").insert({
+        id: uuidv4(),
+        user_id: userId,
+        game_id: gameId,
+        score: gameScore,
+      });
+
+      await trx("users").where({ id: userId }).increment({
+        score_accum: gameScore,
+        num_games_completed: 1,
+      });
     });
 
     res.status(201).json({ message: "Game stats saved successfully" });
@@ -45,20 +54,21 @@ router.post("/", authorize, async (req, res) => {
   }
 });
 
-router.get("/stats", authorize, validateGameInput, async (req, res) => {
+router.get("/stats", authorize, async (req, res) => {
   try {
-    const games = await knex("games").select("score").where({
-      user_id: req.userId,
-    });
+    const gameStats = await knex("users")
+      .select(["score_accum", "num_games_completed"])
+      .where({ id: req.userId })
+      .first();
 
-    if (games.length === 0) {
-      return res.status(200).json({ wins: 0, avgScore: 0 });
+    if (!gameStats) {
+      return res.status(404).json({ message: "User not found" });
     }
 
-    const totalScore = games.reduce((acc, curr) => acc + curr.score, 0);
-    const avgScore = totalScore / games.length;
-
-    res.status(200).json({ wins: games.length, avgScore });
+    res.status(200).json({
+      wins: gameStats.num_games_completed,
+      scoreAccum: gameStats.score_accum,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Internal server error" });

@@ -50,14 +50,14 @@ router.get('/discord/callback', passport.authenticate('discord', { session: fals
 });
 
 // Twitter Auth Route
-router.get('/twitter', passport.authenticate('twitter'));
+// router.get('/twitter', passport.authenticate('twitter'));
 
-router.get('/twitter/callback', passport.authenticate('twitter', { failureRedirect: '/' }), (req, res) => {
+// router.get('/twitter/callback', passport.authenticate('twitter', { failureRedirect: '/' }), (req, res) => {
 
-  const { accessToken, refreshToken } = req.user;
+//   const { accessToken, refreshToken } = req.user;
 
-  res.redirect(`${process.env.CORS_ORIGIN}/auth/login-callback?accessToken=${accessToken}&refreshToken=${refreshToken}`);
-});
+//   res.redirect(`${process.env.CORS_ORIGIN}/auth/login-callback?accessToken=${accessToken}&refreshToken=${refreshToken}`);
+// });
 
 
 
