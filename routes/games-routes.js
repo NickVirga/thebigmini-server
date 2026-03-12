@@ -4,6 +4,10 @@ const { v4: uuidv4 } = require("uuid");
 const authorize = require("../middleware/authorize");
 const { body, validationResult } = require("express-validator");
 
+const {
+  VALID_GAME_ID,
+} = process.env;
+
 const validateGameInput = [
   body("gameId")
     .notEmpty()
@@ -22,6 +26,11 @@ router.post("/", authorize, validateGameInput, async (req, res) => {
   }
 
   const { gameId, gameScore } = req.body;
+
+  if (gameId !== parseInt(VALID_GAME_ID)) {
+    return res.status(401).json({ message: "Game Id is invalid" });
+  }
+
   const userId = req.userId;
 
   try {
@@ -33,7 +42,7 @@ router.post("/", authorize, validateGameInput, async (req, res) => {
       return res.status(409).json({ message: "Entry already exists" });
     }
 
-    await knex.transaction(async (trx) => {
+    const data = await knex.transaction(async (trx) => {
       await trx("games").insert({
         id: uuidv4(),
         user_id: userId,
@@ -45,9 +54,15 @@ router.post("/", authorize, validateGameInput, async (req, res) => {
         score_accum: gameScore,
         num_games_completed: 1,
       });
+
+      return await trx("users").where({ id: userId }).first();
     });
 
-    res.status(201).json({ message: "Game stats saved successfully" });
+    res.status(201).json({
+      message: "Game stats saved successfully",
+      wins: data.num_games_completed,
+      scoreAccum: data.score_accum,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Internal server error" });
