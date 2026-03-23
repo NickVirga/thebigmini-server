@@ -3,6 +3,7 @@ const knex = require("knex")(require("../knexfile"));
 const { v4: uuidv4 } = require("uuid");
 const authorize = require("../middleware/authorize");
 const { body, validationResult } = require("express-validator");
+const { gamesLimiter } = require("../middleware/rate-limiters");
 
 const {
   VALID_GAME_ID,
@@ -19,7 +20,7 @@ const validateGameInput = [
     .withMessage("Game score must be a number between 0 and 100"),
 ];
 
-router.post("/", authorize, validateGameInput, async (req, res) => {
+router.post("/", authorize, gamesLimiter, validateGameInput, async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
@@ -69,7 +70,7 @@ router.post("/", authorize, validateGameInput, async (req, res) => {
   }
 });
 
-router.get("/stats", authorize, async (req, res) => {
+router.get("/stats", authorize, gamesLimiter, async (req, res) => {
   try {
     const gameStats = await knex("users")
       .select(["score_accum", "num_games_completed"])

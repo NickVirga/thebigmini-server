@@ -20,7 +20,7 @@ const authRoutes = require("./routes/auth-routes");
 const gamesRoutes = require("./routes/games-routes");
 
 app.use("/api/auth", authLimiter, authRoutes);
-app.use("/api/games", gamesLimiter, gamesRoutes);
+app.use("/api/games", gamesRoutes);
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
