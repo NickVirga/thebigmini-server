@@ -5,14 +5,12 @@ const authorize = require("../middleware/authorize");
 const { body, validationResult } = require("express-validator");
 const { gamesLimiter } = require("../middleware/rate-limiters");
 
-const {
-  VALID_GAME_ID,
-} = process.env;
+const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
 
 const validateGameInput = [
-  body("gameId")
+  body("gameDate")
     .notEmpty()
-    .withMessage("Game ID is required and must be a string"),
+    .withMessage("Game date is required and must be a string"),
   body("gameScore")
     .notEmpty()
     .withMessage("Game score is required")
@@ -26,17 +24,17 @@ router.post("/", authorize, gamesLimiter, validateGameInput, async (req, res) =>
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { gameId, gameScore } = req.body;
+  const { gameDate, gameScore } = req.body;
 
-  if (gameId !== parseInt(VALID_GAME_ID)) {
-    return res.status(401).json({ message: "Game Id is invalid" });
+  if (gameDate !== today) {
+    return res.status(401).json({ message: "Game date is invalid" });
   }
 
   const userId = req.userId;
 
   try {
     const existingEntry = await knex("games")
-      .where({ user_id: userId, game_id: gameId })
+      .where({ user_id: userId, game_date: gameDate })
       .first();
 
     if (existingEntry) {
@@ -47,7 +45,7 @@ router.post("/", authorize, gamesLimiter, validateGameInput, async (req, res) =>
       await trx("games").insert({
         id: uuidv4(),
         user_id: userId,
-        game_id: gameId,
+        game_date: gameDate,
         score: gameScore,
       });
 
