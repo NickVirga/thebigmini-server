@@ -5,8 +5,6 @@ const authorize = require("../middleware/authorize");
 const { body, validationResult } = require("express-validator");
 const { gamesLimiter } = require("../middleware/rate-limiters");
 
-const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
-
 const validateGameInput = [
   body("gameDate")
     .notEmpty()
@@ -25,6 +23,7 @@ router.post("/", authorize, gamesLimiter, validateGameInput, async (req, res) =>
   }
 
   const { gameDate, gameScore } = req.body;
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
 
   if (gameDate !== today) {
     return res.status(401).json({ message: "Game date is invalid" });
